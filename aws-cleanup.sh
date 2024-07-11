@@ -220,3 +220,6 @@ for role_name in $role_names; do
     aws iam delete-role --role-name $role_name || echo "Failed to delete role: $role_name"
 done
 print_green "All IAM roles processed."
+
+# Print completion message
+print_green "Script completed successfully."
