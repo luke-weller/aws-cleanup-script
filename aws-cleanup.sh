@@ -221,5 +221,8 @@ for role_name in $role_names; do
 done
 print_green "All IAM roles processed."
 
+
 # Print completion message
+echo "**********************************"
 print_green "Script completed successfully."
+echo "***********************************"
