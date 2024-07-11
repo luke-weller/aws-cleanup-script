@@ -5,11 +5,6 @@ print_green() {
     echo -e "\033[0;32m$1\033[0m"
 }
 
-# Function to print in red
-print_red() {
-    echo -e "\033[0;31m$1\033[0m"
-}
-
 # Terminate all EC2 instances
 echo "Terminating all EC2 instances..."
 instance_ids=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId" --output text)
