@@ -78,59 +78,6 @@ for db_instance in $db_instance_ids; do
 done
 print_green "All RDS instances deleted."
 
-# Delete all IAM users, but skip users with a login profile
-echo "Deleting all IAM users..."
-usernames=$(aws iam list-users --query "Users[*].UserName" --output text)
-for username in $usernames; do
-    echo "Checking user: $username"
-    # Check for login profile
-    login_profile=$(aws iam get-login-profile --user-name $username --query "LoginProfile.UserName" --output text 2>/dev/null)
-    if [ "$login_profile" != "None" ]; then
-        echo "User $username has a login profile. Skipping deletion."
-        continue # Skip to the next iteration, effectively skipping this user
-    fi
-    policies=$(aws iam list-user-policies --user-name $username --query "PolicyNames" --output text)
-    for policy in $policies; do
-        aws iam delete-user-policy --user-name $username --policy-name $policy
-    done
-    groups=$(aws iam list-groups-for-user --user-name $username --query "Groups[*].GroupName" --output text)
-    for group in $groups; do
-        aws iam remove-user-from-group --user-name $username --group-name $group
-    done
-    access_keys=$(aws iam list-access-keys --user-name $username --query "AccessKeyMetadata[*].AccessKeyId" --output text)
-    for key in $access_keys; do
-        aws iam delete-access-key --user-name $username --access-key-id $key
-    done
-    # Attempt to delete the user
-    aws iam delete-user --user-name $username
-done
-print_green "All applicable IAM users deleted."
-
-# Delete all IAM roles
-echo "Deleting all IAM roles..."
-role_names=$(aws iam list-roles --query "Roles[*].RoleName" --output text)
-for role_name in $role_names; do
-    echo "Processing role: $role_name"
-    # Skip AWS-managed service-linked roles
-    if [[ $role_name == AWSServiceRoleFor* ]]; then
-        echo "Skipping AWS-managed service-linked role: $role_name"
-        continue
-    fi
-    # Delete inline policies attached to the role
-    policies=$(aws iam list-role-policies --role-name $role_name --query "PolicyNames" --output text)
-    for policy in $policies; do
-        aws iam delete-role-policy --role-name $role_name --policy-name $policy
-    done
-    # Detach managed policies attached to the role
-    attached_policies=$(aws iam list-attached-role-policies --role-name $role_name --query "AttachedPolicies[*].PolicyArn" --output text)
-    for policy_arn in $attached_policies; do
-        aws iam detach-role-policy --role-name $role_name --policy-arn $policy_arn
-    done
-    # Now attempt to delete the role
-    aws iam delete-role --role-name $role_name || echo "Failed to delete role: $role_name"
-done
-print_green "All IAM roles processed."
-
 # Delete all CloudFormation stacks
 echo "Deleting all CloudFormation stacks..."
 stack_names=$(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --query "StackSummaries[*].StackName" --output text)
@@ -220,3 +167,56 @@ if [ "$EIP_COUNT" -gt 0 ]; then
 else
     print_green "No Elastic IP Addresses found."
 fi
+
+# Delete all IAM users, but skip users with a login profile
+echo "Deleting all IAM users..."
+usernames=$(aws iam list-users --query "Users[*].UserName" --output text)
+for username in $usernames; do
+    echo "Checking user: $username"
+    # Check for login profile
+    login_profile=$(aws iam get-login-profile --user-name $username --query "LoginProfile.UserName" --output text 2>/dev/null)
+    if [ "$login_profile" != "None" ]; then
+        echo "User $username has a login profile. Skipping deletion."
+        continue # Skip to the next iteration, effectively skipping this user
+    fi
+    policies=$(aws iam list-user-policies --user-name $username --query "PolicyNames" --output text)
+    for policy in $policies; do
+        aws iam delete-user-policy --user-name $username --policy-name $policy
+    done
+    groups=$(aws iam list-groups-for-user --user-name $username --query "Groups[*].GroupName" --output text)
+    for group in $groups; do
+        aws iam remove-user-from-group --user-name $username --group-name $group
+    done
+    access_keys=$(aws iam list-access-keys --user-name $username --query "AccessKeyMetadata[*].AccessKeyId" --output text)
+    for key in $access_keys; do
+        aws iam delete-access-key --user-name $username --access-key-id $key
+    done
+    # Attempt to delete the user
+    aws iam delete-user --user-name $username
+done
+print_green "All applicable IAM users deleted."
+
+# Delete all IAM roles
+echo "Deleting all IAM roles..."
+role_names=$(aws iam list-roles --query "Roles[*].RoleName" --output text)
+for role_name in $role_names; do
+    echo "Processing role: $role_name"
+    # Skip AWS-managed service-linked roles
+    if [[ $role_name == AWSServiceRoleFor* ]]; then
+        echo "Skipping AWS-managed service-linked role: $role_name"
+        continue
+    fi
+    # Delete inline policies attached to the role
+    policies=$(aws iam list-role-policies --role-name $role_name --query "PolicyNames" --output text)
+    for policy in $policies; do
+        aws iam delete-role-policy --role-name $role_name --policy-name $policy
+    done
+    # Detach managed policies attached to the role
+    attached_policies=$(aws iam list-attached-role-policies --role-name $role_name --query "AttachedPolicies[*].PolicyArn" --output text)
+    for policy_arn in $attached_policies; do
+        aws iam detach-role-policy --role-name $role_name --policy-arn $policy_arn
+    done
+    # Now attempt to delete the role
+    aws iam delete-role --role-name $role_name || echo "Failed to delete role: $role_name"
+done
+print_green "All IAM roles processed."
